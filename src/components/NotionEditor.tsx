@@ -27,13 +27,23 @@ import {
   Hash,
   Strikethrough,
   MoreHorizontal,
-  ChevronDown
+  ChevronDown,
+  Table,
+  BarChart3,
+  PieChart,
+  Calendar,
+  FileText,
+  Video,
+  Music,
+  Bookmark,
+  MapPin,
+  Clock
 } from 'lucide-react';
 
 // Block Interface
 interface Block {
   id: string;
-  type: 'paragraph' | 'heading1' | 'heading2' | 'heading3' | 'quote' | 'code' | 'list' | 'numbered-list' | 'todo' | 'toggle' | 'image' | 'divider' | 'callout';
+  type: 'paragraph' | 'heading1' | 'heading2' | 'heading3' | 'quote' | 'code' | 'list' | 'numbered-list' | 'todo' | 'toggle' | 'image' | 'divider' | 'callout' | 'table' | 'chart-bar' | 'chart-pie' | 'calendar' | 'file' | 'video' | 'audio' | 'bookmark';
   content: string;
   alignment?: 'left' | 'center' | 'right';
   checked?: boolean;
@@ -41,6 +51,8 @@ interface Block {
   children?: Block[];
   color?: string;
   backgroundColor?: string;
+  tableData?: { headers: string[]; rows: string[][] };
+  chartData?: { labels: string[]; values: number[] };
 }
 
 const NotionEditor = () => {
@@ -72,7 +84,7 @@ const NotionEditor = () => {
     'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=800&q=80'
   ];
 
-  // Block type definitions
+  // Block type definitions with new options
   const blockTypes = [
     { type: 'paragraph', label: 'Text', icon: Type, description: 'Just start writing with plain text.' },
     { type: 'heading1', label: 'Heading 1', icon: Heading1, description: 'Big section heading.' },
@@ -87,6 +99,14 @@ const NotionEditor = () => {
     { type: 'divider', label: 'Divider', icon: Minus, description: 'Visually divide blocks.' },
     { type: 'callout', label: 'Callout', icon: Hash, description: 'Make writing stand out.' },
     { type: 'image', label: 'Image', icon: Image, description: 'Upload or embed with a link.' },
+    { type: 'table', label: 'Table', icon: Table, description: 'Create a table with data.' },
+    { type: 'chart-bar', label: 'Bar Chart', icon: BarChart3, description: 'Display data as bar chart.' },
+    { type: 'chart-pie', label: 'Pie Chart', icon: PieChart, description: 'Display data as pie chart.' },
+    { type: 'calendar', label: 'Calendar', icon: Calendar, description: 'Add a calendar view.' },
+    { type: 'file', label: 'File', icon: FileText, description: 'Upload and embed files.' },
+    { type: 'video', label: 'Video', icon: Video, description: 'Embed video content.' },
+    { type: 'audio', label: 'Audio', icon: Music, description: 'Embed audio content.' },
+    { type: 'bookmark', label: 'Bookmark', icon: Bookmark, description: 'Save a link with preview.' },
   ];
 
   // Close menus when clicking outside
@@ -121,7 +141,9 @@ const NotionEditor = () => {
       alignment: 'left',
       checked: type === 'todo' ? false : undefined,
       collapsed: type === 'toggle' ? false : undefined,
-      children: type === 'toggle' ? [] : undefined
+      children: type === 'toggle' ? [] : undefined,
+      tableData: type === 'table' ? { headers: ['Column 1', 'Column 2'], rows: [['', ''], ['', '']] } : undefined,
+      chartData: (type === 'chart-bar' || type === 'chart-pie') ? { labels: ['A', 'B', 'C'], values: [10, 20, 30] } : undefined
     };
 
     setContent(currentContent => {
@@ -167,6 +189,18 @@ const NotionEditor = () => {
       updates.children = undefined;
     }
 
+    if (newType === 'table') {
+      updates.tableData = { headers: ['Column 1', 'Column 2'], rows: [['', ''], ['', '']] };
+    } else {
+      updates.tableData = undefined;
+    }
+
+    if (newType === 'chart-bar' || newType === 'chart-pie') {
+      updates.chartData = { labels: ['A', 'B', 'C'], values: [10, 20, 30] };
+    } else {
+      updates.chartData = undefined;
+    }
+
     updateBlock(id, updates);
     setShowTypeMenu(null);
   }, [content, updateBlock]);
@@ -178,6 +212,7 @@ const NotionEditor = () => {
 
     if (e.key === '/') {
         if (block.content === '' || block.content === '/') {
+            e.preventDefault();
             const rect = (e.target as HTMLElement).getBoundingClientRect();
             setShowSlashMenu({
                 blockId,
@@ -187,8 +222,11 @@ const NotionEditor = () => {
     } else if (e.key === 'Escape') {
       setShowSlashMenu(null);
     } else if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      addBlock('paragraph', blockId);
+      // Only create new block if content is not empty and not in specific block types
+      if (block.content.trim() && !['code', 'table', 'chart-bar', 'chart-pie'].includes(block.type)) {
+        e.preventDefault();
+        addBlock('paragraph', blockId);
+      }
     }
   }, [content, addBlock]);
 
@@ -310,7 +348,15 @@ const NotionEditor = () => {
       toggle: 'text-gray-800 dark:text-gray-200 leading-relaxed min-h-[1.5rem]',
       callout: 'bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-900/50 rounded-md p-4 flex items-start gap-3',
       divider: '',
-      image: 'w-full h-auto'
+      image: 'w-full h-auto',
+      table: 'w-full',
+      'chart-bar': 'w-full h-64 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center',
+      'chart-pie': 'w-full h-64 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center',
+      calendar: 'w-full h-64 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center',
+      file: 'w-full p-4 bg-gray-50 dark:bg-gray-800 rounded-lg',
+      video: 'w-full aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center',
+      audio: 'w-full h-16 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center',
+      bookmark: 'w-full p-4 border border-gray-200 dark:border-gray-700 rounded-lg'
     };
 
     return `${baseClasses} ${alignmentClasses[block.alignment || 'left']} ${typeClasses[block.type]}`;
@@ -319,6 +365,135 @@ const NotionEditor = () => {
   const getBlockTypeIcon = (type: Block['type']) => {
     const blockType = blockTypes.find(bt => bt.type === type);
     return blockType ? blockType.icon : Type;
+  };
+
+  const renderSpecialBlock = (block: Block) => {
+    switch (block.type) {
+      case 'table':
+        return (
+          <div className="w-full overflow-x-auto">
+            <table className="min-w-full border border-gray-200 dark:border-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  {block.tableData?.headers.map((header, index) => (
+                    <th key={index} className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 text-left font-medium">
+                      <input
+                        type="text"
+                        value={header}
+                        onChange={(e) => {
+                          const newTableData = { ...block.tableData! };
+                          newTableData.headers[index] = e.target.value;
+                          updateBlock(block.id, { tableData: newTableData });
+                        }}
+                        className="w-full bg-transparent border-none outline-none"
+                        placeholder={`Header ${index + 1}`}
+                      />
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {block.tableData?.rows.map((row, rowIndex) => (
+                  <tr key={rowIndex}>
+                    {row.map((cell, cellIndex) => (
+                      <td key={cellIndex} className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                        <input
+                          type="text"
+                          value={cell}
+                          onChange={(e) => {
+                            const newTableData = { ...block.tableData! };
+                            newTableData.rows[rowIndex][cellIndex] = e.target.value;
+                            updateBlock(block.id, { tableData: newTableData });
+                          }}
+                          className="w-full bg-transparent border-none outline-none"
+                          placeholder="Enter data"
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      
+      case 'chart-bar':
+        return (
+          <div className={getBlockClassName(block)}>
+            <BarChart3 className="w-16 h-16 text-gray-400 mx-auto" />
+            <p className="text-gray-500 mt-2">Bar Chart Placeholder</p>
+            <p className="text-xs text-gray-400">Chart integration coming soon</p>
+          </div>
+        );
+      
+      case 'chart-pie':
+        return (
+          <div className={getBlockClassName(block)}>
+            <PieChart className="w-16 h-16 text-gray-400 mx-auto" />
+            <p className="text-gray-500 mt-2">Pie Chart Placeholder</p>
+            <p className="text-xs text-gray-400">Chart integration coming soon</p>
+          </div>
+        );
+      
+      case 'calendar':
+        return (
+          <div className={getBlockClassName(block)}>
+            <Calendar className="w-16 h-16 text-gray-400 mx-auto" />
+            <p className="text-gray-500 mt-2">Calendar View</p>
+            <p className="text-xs text-gray-400">Calendar integration coming soon</p>
+          </div>
+        );
+      
+      case 'file':
+        return (
+          <div className={getBlockClassName(block)}>
+            <div className="flex items-center gap-3">
+              <FileText className="w-8 h-8 text-gray-400" />
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">File Attachment</p>
+                <p className="text-xs text-gray-500">Click to upload file</p>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'video':
+        return (
+          <div className={getBlockClassName(block)}>
+            <Video className="w-16 h-16 text-gray-400 mx-auto" />
+            <p className="text-gray-500 mt-2">Video Content</p>
+            <p className="text-xs text-gray-400">Video embedding coming soon</p>
+          </div>
+        );
+      
+      case 'audio':
+        return (
+          <div className={getBlockClassName(block)}>
+            <Music className="w-8 h-8 text-gray-400 mx-auto" />
+            <p className="text-gray-500">Audio Player</p>
+          </div>
+        );
+      
+      case 'bookmark':
+        return (
+          <div className={getBlockClassName(block)}>
+            <div className="flex items-center gap-3">
+              <Bookmark className="w-6 h-6 text-gray-400" />
+              <div className="flex-1">
+                <input
+                  type="url"
+                  placeholder="Paste a link to create a bookmark"
+                  className="w-full bg-transparent border-none outline-none text-sm"
+                  onBlur={(e) => updateBlock(block.id, { content: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+        );
+      
+      default:
+        return null;
+    }
   };
 
   const renderBlock = (block: Block, index: number) => {
@@ -337,7 +512,7 @@ const NotionEditor = () => {
           onMouseEnter={() => setSelectedBlock(block.id)}
           onMouseLeave={() => setSelectedBlock(null)}
         >
-          {/* Drag handle and block menu */}
+          {/* Drag handle and block controls */}
           <div className={`flex items-center transition-opacity duration-200 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
             {block.type !== 'divider' && (
               <>
@@ -357,22 +532,20 @@ const NotionEditor = () => {
                     <ChevronDown className="w-3 h-3" />
                   </button>
                   {showTypeMenu === block.id && (
-                    <div className="absolute left-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 py-2 w-64">
+                    <div className="absolute left-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 py-2 w-64 max-h-80 overflow-y-auto">
                       <p className="px-3 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Turn into</p>
-                      <div className="max-h-64 overflow-y-auto">
-                        {blockTypes.map(({ type, label, icon: Icon }) => (
-                          <button
-                            key={type}
-                            onClick={() => changeBlockType(block.id, type as Block['type'])}
-                            className={`w-full flex items-center space-x-3 px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                              block.type === type ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : ''
-                            }`}
-                          >
-                            <Icon className="w-4 h-4 flex-shrink-0" />
-                            <span className="text-sm font-medium">{label}</span>
-                          </button>
-                        ))}
-                      </div>
+                      {blockTypes.map(({ type, label, icon: Icon }) => (
+                        <button
+                          key={type}
+                          onClick={() => changeBlockType(block.id, type as Block['type'])}
+                          className={`w-full flex items-center space-x-3 px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                            block.type === type ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : ''
+                          }`}
+                        >
+                          <Icon className="w-4 h-4 flex-shrink-0" />
+                          <span className="text-sm font-medium">{label}</span>
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -402,17 +575,19 @@ const NotionEditor = () => {
                           </button>
                         ))}
                       </div>
-                      <div className="my-1 h-px bg-gray-200 dark:bg-gray-700" />
-                      <button
-                        onClick={() => deleteBlock(block.id)}
-                        className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-left text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span>Delete</span>
-                      </button>
                     </div>
                   )}
                 </div>
+                {/* Direct delete button */}
+                {content.length > 1 && (
+                  <button
+                    onClick={() => deleteBlock(block.id)}
+                    className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                    title="Delete block"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -488,6 +663,8 @@ const NotionEditor = () => {
                         dangerouslySetInnerHTML={{ __html: block.content }}
                      />
                  </div>
+            ) : ['table', 'chart-bar', 'chart-pie', 'calendar', 'file', 'video', 'audio', 'bookmark'].includes(block.type) ? (
+              renderSpecialBlock(block)
             ) : (
               <div className="flex-1">
                 <div
@@ -512,7 +689,7 @@ const NotionEditor = () => {
           </div>
 
           {/* Alignment controls */}
-          {block.type !== 'image' && block.type !== 'divider' && block.type !== 'callout' && (
+          {!['image', 'divider', 'callout', 'table', 'chart-bar', 'chart-pie', 'calendar', 'file', 'video', 'audio', 'bookmark'].includes(block.type) && (
             <div className={`flex items-center space-x-1 transition-opacity duration-200 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
               <button
                 onClick={() => updateBlock(block.id, { alignment: 'left' })}
@@ -568,14 +745,14 @@ const NotionEditor = () => {
       {showSlashMenu && (
         <div
           ref={slashMenuRef}
-          className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-2 w-80"
+          className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-2 w-80 max-h-96 overflow-y-auto"
           style={{
             left: `${showSlashMenu.position.x}px`,
             top: `${showSlashMenu.position.y}px`
           }}
         >
           <p className="px-3 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Basic blocks</p>
-          <div className="max-h-64 overflow-y-auto">
+          <div>
             {blockTypes.map(({ type, label, icon: Icon, description }) => (
               <button
                 key={type}
