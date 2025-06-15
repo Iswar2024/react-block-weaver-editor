@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import {
@@ -39,7 +38,8 @@ import {
   Bookmark,
   MapPin,
   Clock,
-  ChevronRight
+  ChevronRight,
+  Palette
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell, Pie } from 'recharts';
 import CalendarView, { CalendarEvent } from './CalendarView';
@@ -76,6 +76,7 @@ const NotionEditor = () => {
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState('');
   const [showTypeMenu, setShowTypeMenu] = useState<string | null>(null);
+  const [showColorPalette, setShowColorPalette] = useState<'text' | 'background' | null>(null);
 
   const menuRef = useRef<HTMLDivElement>(null);
   const slashMenuRef = useRef<HTMLDivElement>(null);
@@ -276,6 +277,34 @@ const NotionEditor = () => {
         setShowFormatMenu(false);
       }
     }, 10);
+  };
+
+  // Apply text color
+  const applyTextColor = (color: string) => {
+    if (!selectedBlockId) return;
+    
+    document.execCommand('foreColor', false, color);
+    
+    const blockElement = document.querySelector(`[data-block-id="${selectedBlockId}"] [contenteditable="true"]`);
+    if(blockElement){
+        updateBlock(selectedBlockId, { content: blockElement.innerHTML });
+    }
+
+    setShowColorPalette(null);
+  };
+
+  // Apply background color (highlight)
+  const applyBackgroundColor = (color: string) => {
+    if (!selectedBlockId) return;
+    
+    document.execCommand('hiliteColor', false, color);
+    
+    const blockElement = document.querySelector(`[data-block-id="${selectedBlockId}"] [contenteditable="true"]`);
+    if(blockElement){
+        updateBlock(selectedBlockId, { content: blockElement.innerHTML });
+    }
+
+    setShowColorPalette(null);
   };
 
   // Apply formatting to selected text
@@ -856,7 +885,7 @@ const NotionEditor = () => {
                   {showTypeMenu === block.id && (
                     <div className="absolute left-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 py-2 w-64 max-h-80 overflow-y-auto">
                       <p className="px-3 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Turn into</p>
-                      {blockTypes.map(({ type, label, icon: Icon }) => (
+                      {blockTypes.map(({ type, label, icon: Icon, description }) => (
                         <button
                           key={type}
                           onClick={() => changeBlockType(block.id, type as Block['type'])}
@@ -1097,6 +1126,68 @@ const NotionEditor = () => {
             <button onClick={() => applyFormatting('strikethrough')} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300" title="Strikethrough"><Strikethrough size={14} /></button>
             <button onClick={() => document.execCommand('insertHTML', false, '<code>&nbsp;</code>')} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300" title="Code"><Code size={14} /></button>
             <button onClick={() => applyFormatting('link')} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300" title="Link"><Link size={14} /></button>
+            
+            {/* Text Color */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowColorPalette(showColorPalette === 'text' ? null : 'text')} 
+                className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center" 
+                title="Text Color"
+              >
+                <Type size={14} />
+                <div className="w-3 h-1 bg-red-500 mt-1 ml-0.5"></div>
+              </button>
+              
+              {showColorPalette === 'text' && (
+                <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-2 z-60 w-48">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Text Color</p>
+                  <div className="grid grid-cols-4 gap-1">
+                    {colorPalette.map((color) => (
+                      <button
+                        key={color.name}
+                        onClick={() => applyTextColor(color.text)}
+                        className="w-8 h-8 rounded border-2 border-gray-200 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-400 flex items-center justify-center"
+                        style={{ backgroundColor: color.text }}
+                        title={color.name}
+                      >
+                        <span className="text-xs text-white font-bold">A</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Background Color (Highlight) */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowColorPalette(showColorPalette === 'background' ? null : 'background')} 
+                className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center" 
+                title="Highlight Color"
+              >
+                <Palette size={14} />
+                <div className="w-3 h-1 bg-yellow-400 mt-1 ml-0.5"></div>
+              </button>
+              
+              {showColorPalette === 'background' && (
+                <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-2 z-60 w-48">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Highlight Color</p>
+                  <div className="grid grid-cols-4 gap-1">
+                    {colorPalette.map((color) => (
+                      <button
+                        key={color.name}
+                        onClick={() => applyBackgroundColor(color.bg)}
+                        className="w-8 h-8 rounded border-2 border-gray-200 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-400 flex items-center justify-center"
+                        style={{ backgroundColor: color.bg }}
+                        title={color.name}
+                      >
+                        <span className="text-xs text-gray-800 font-bold">A</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
         </div>
       )}
 
