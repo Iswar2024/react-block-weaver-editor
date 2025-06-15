@@ -39,7 +39,12 @@ import {
   MapPin,
   Clock,
   ChevronRight,
-  Palette
+  Palette,
+  Play,
+  Pause,
+  Download,
+  FileAudio,
+  FileVideo
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell, Pie } from 'recharts';
 import CalendarView, { CalendarEvent } from './CalendarView';
@@ -61,6 +66,9 @@ interface Block {
   toggleContent?: string;
   selectedDate?: Date;
   calendarEvents?: CalendarEvent[];
+  fileName?: string;
+  fileSize?: string;
+  fileType?: string;
 }
 
 const NotionEditor = () => {
@@ -71,18 +79,23 @@ const NotionEditor = () => {
   const [showBlockMenu, setShowBlockMenu] = useState<string | null>(null);
   const [showSlashMenu, setShowSlashMenu] = useState<{ blockId: string; position: { x: number; y: number } } | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState<string | null>(null);
+  const [isFileModalOpen, setIsFileModalOpen] = useState<string | null>(null);
   const [showFormatMenu, setShowFormatMenu] = useState(false);
   const [formatMenuPosition, setFormatMenuPosition] = useState({ x: 0, y: 0 });
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState('');
   const [showTypeMenu, setShowTypeMenu] = useState<string | null>(null);
   const [showColorPalette, setShowColorPalette] = useState<'text' | 'background' | null>(null);
+  const [isPlaying, setIsPlaying] = useState<Record<string, boolean>>({});
 
   const menuRef = useRef<HTMLDivElement>(null);
   const slashMenuRef = useRef<HTMLDivElement>(null);
   const formatMenuRef = useRef<HTMLDivElement>(null);
   const typeMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioFileInputRef = useRef<HTMLInputElement>(null);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
+  const documentFileInputRef = useRef<HTMLInputElement>(null);
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
 
@@ -369,19 +382,28 @@ const NotionEditor = () => {
     setContent(_content);
   };
 
-  // Image handling
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0] && isImageModalOpen) {
+  // File handling functions
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, blockId: string, fileType: 'image' | 'video' | 'audio' | 'document') => {
+    if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       const reader = new FileReader();
+      
       reader.onloadend = () => {
-        updateBlock(isImageModalOpen, { content: reader.result as string });
+        const updates: Partial<Block> = {
+          content: reader.result as string,
+          fileName: file.name,
+          fileSize: (file.size / 1024 / 1024).toFixed(2) + ' MB',
+          fileType: file.type
+        };
+        updateBlock(blockId, updates);
         setIsImageModalOpen(null);
+        setIsFileModalOpen(null);
       };
+      
       reader.readAsDataURL(file);
     }
   };
-  
+
   const handleEmbedImage = () => {
       if(isImageModalOpen && imageUrl) {
           updateBlock(isImageModalOpen, { content: imageUrl});
@@ -495,8 +517,8 @@ const NotionEditor = () => {
       'chart-pie': 'w-full h-64 bg-gray-50 dark:bg-gray-800 rounded-lg',
       calendar: 'w-full h-64 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center',
       file: 'w-full p-4 bg-gray-50 dark:bg-gray-800 rounded-lg',
-      video: 'w-full aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center',
-      audio: 'w-full h-16 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center',
+      video: 'w-full bg-gray-100 dark:bg-gray-800 rounded-lg',
+      audio: 'w-full p-4 bg-gray-50 dark:bg-gray-800 rounded-lg',
       bookmark: 'w-full p-4 border border-gray-200 dark:border-gray-700 rounded-lg'
     };
 
@@ -813,30 +835,148 @@ const NotionEditor = () => {
       case 'file':
         return (
           <div className={getBlockClassName(block)}>
-            <div className="flex items-center gap-3">
-              <FileText className="w-8 h-8 text-gray-400" />
-              <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">File Attachment</p>
-                <p className="text-xs text-gray-500">Click to upload file</p>
+            {block.content ? (
+              <div className="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                <FileText className="w-8 h-8 text-blue-500 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                    {block.fileName || 'Document'}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {block.fileSize || 'Unknown size'} • {block.fileType || 'Document'}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => window.open(block.content, '_blank')}
+                    className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                    title="Open file"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setIsFileModalOpen(block.id)}
+                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Replace file"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div
+                onClick={() => setIsFileModalOpen(block.id)}
+                className="flex items-center gap-3 p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+              >
+                <FileText className="w-8 h-8 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Upload a file</p>
+                  <p className="text-xs text-gray-500">Click to browse files</p>
+                </div>
+              </div>
+            )}
           </div>
         );
       
       case 'video':
         return (
           <div className={getBlockClassName(block)}>
-            <Video className="w-16 h-16 text-gray-400 mx-auto" />
-            <p className="text-gray-500 mt-2">Video Content</p>
-            <p className="text-xs text-gray-400">Video embedding coming soon</p>
+            {block.content ? (
+              <div className="relative">
+                <video
+                  src={block.content}
+                  controls
+                  className="w-full rounded-lg"
+                  style={{ maxHeight: '400px' }}
+                >
+                  Your browser does not support the video tag.
+                </video>
+                <div className="mt-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileVideo className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {block.fileName || 'Video file'}
+                    </span>
+                    {block.fileSize && (
+                      <span className="text-xs text-gray-500">({block.fileSize})</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setIsFileModalOpen(block.id)}
+                    className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    title="Replace video"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={() => setIsFileModalOpen(block.id)}
+                className="aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors border-2 border-dashed border-gray-300 dark:border-gray-600"
+              >
+                <Video className="w-16 h-16 text-gray-400 mb-3" />
+                <p className="text-gray-500 font-medium">Upload Video</p>
+                <p className="text-xs text-gray-400 mt-1">Click to browse video files</p>
+              </div>
+            )}
           </div>
         );
       
       case 'audio':
         return (
           <div className={getBlockClassName(block)}>
-            <Music className="w-8 h-8 text-gray-400 mx-auto" />
-            <p className="text-gray-500">Audio Player</p>
+            {block.content ? (
+              <div className="flex items-center gap-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+                <button
+                  onClick={() => toggleAudioPlayback(block.id)}
+                  className="p-3 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-full transition-colors"
+                >
+                  {isPlaying[block.id] ? (
+                    <Pause className="w-6 h-6" />
+                  ) : (
+                    <Play className="w-6 h-6" />
+                  )}
+                </button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <FileAudio className="w-4 h-4 text-gray-500" />
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                      {block.fileName || 'Audio file'}
+                    </p>
+                  </div>
+                  <audio
+                    src={block.content}
+                    controls
+                    className="w-full h-8"
+                    style={{ filter: 'sepia(20%) saturate(70%) hue-rotate(180deg)' }}
+                  >
+                    Your browser does not support the audio tag.
+                  </audio>
+                  {block.fileSize && (
+                    <p className="text-xs text-gray-500 mt-1">{block.fileSize}</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => setIsFileModalOpen(block.id)}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Replace audio"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div
+                onClick={() => setIsFileModalOpen(block.id)}
+                className="flex items-center gap-4 p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+              >
+                <Music className="w-8 h-8 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Upload Audio</p>
+                  <p className="text-xs text-gray-500">Click to browse audio files</p>
+                </div>
+              </div>
+            )}
           </div>
         );
       
@@ -1038,7 +1178,7 @@ const NotionEditor = () => {
                   <div
                     contentEditable
                     suppressContentEditableWarning
-                    className={getBlockClassName(block)}
+                    className="w-full border-none outline-none bg-transparent resize-none overflow-hidden focus:outline-none text-gray-800 dark:text-gray-200 leading-relaxed min-h-[1.5rem] text-base"
                     onBlur={(e) => updateBlock(block.id, { toggleTitle: e.currentTarget.innerHTML || '' })}
                     onKeyDown={(e) => handleSlashCommand(e, block.id)}
                     onMouseUp={(e) => handleTextSelection(e, block.id)}
@@ -1232,6 +1372,71 @@ const NotionEditor = () => {
                 </div>
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* File Upload Modal */}
+      {isFileModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Upload File</h3>
+              <button
+                onClick={() => setIsFileModalOpen(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
+                <UploadCloud className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <div className="space-y-2">
+                  <button
+                    onClick={() => documentFileInputRef.current?.click()}
+                    className="block w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Upload Document
+                  </button>
+                  <button
+                    onClick={() => videoFileInputRef.current?.click()}
+                    className="block w-full bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    Upload Video
+                  </button>
+                  <button
+                    onClick={() => audioFileInputRef.current?.click()}
+                    className="block w-full bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    Upload Audio
+                  </button>
+                </div>
+                <input 
+                  type="file" 
+                  ref={documentFileInputRef} 
+                  onChange={(e) => handleFileUpload(e, isFileModalOpen, 'document')} 
+                  className="hidden" 
+                  accept=".pdf,.doc,.docx,.txt,.rtf,.odt"
+                />
+                <input 
+                  type="file" 
+                  ref={videoFileInputRef} 
+                  onChange={(e) => handleFileUpload(e, isFileModalOpen, 'video')} 
+                  className="hidden" 
+                  accept="video/*"
+                />
+                <input 
+                  type="file" 
+                  ref={audioFileInputRef} 
+                  onChange={(e) => handleFileUpload(e, isFileModalOpen, 'audio')} 
+                  className="hidden" 
+                  accept="audio/*"
+                />
+                <p className="text-xs text-gray-500 mt-2">Maximum file size: 10MB</p>
+              </div>
+            </div>
           </div>
         </div>
       )}
