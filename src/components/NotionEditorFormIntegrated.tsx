@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import {
@@ -89,6 +90,13 @@ const NotionEditorFormIntegrated: React.FC<NotionEditorProps> = ({
       { id: 'block-1', type: 'paragraph', content: 'Start writing...', alignment: 'left' }
     ]
   );
+
+  // Update content when initialContent changes
+  useEffect(() => {
+    if (initialContent) {
+      setContent(initialContent);
+    }
+  }, [initialContent]);
 
   // Notify parent component when content changes
   useEffect(() => {
@@ -212,6 +220,99 @@ const NotionEditorFormIntegrated: React.FC<NotionEditorProps> = ({
     }, 0);
   }, []);
 
+  const handleKeyPress = (e: React.KeyboardEvent, blockId: string, index: number) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      addBlock('paragraph', blockId);
+    }
+  };
+
+  const renderBlock = (block: Block, index: number) => {
+    const baseStyles = `
+      ${block.alignment === 'center' ? 'text-center' : ''}
+      ${block.alignment === 'right' ? 'text-right' : ''}
+      ${block.color ? `color: ${block.color};` : ''}
+      ${block.backgroundColor && block.backgroundColor !== 'transparent' ? `background-color: ${block.backgroundColor}; padding: 8px 12px; border-radius: 4px; margin: 2px 0;` : ''}
+    `;
+
+    const contentEditableProps = {
+      contentEditable: !readOnly,
+      suppressContentEditableWarning: true,
+      onBlur: (e: React.FocusEvent<HTMLElement>) => updateBlock(block.id, { content: e.currentTarget.innerHTML }),
+      onKeyPress: (e: React.KeyboardEvent) => handleKeyPress(e, block.id, index),
+      dangerouslySetInnerHTML: { __html: block.content },
+      style: block.color || (block.backgroundColor && block.backgroundColor !== 'transparent') ? {
+        color: block.color || undefined,
+        backgroundColor: block.backgroundColor && block.backgroundColor !== 'transparent' ? block.backgroundColor : undefined,
+        padding: block.backgroundColor && block.backgroundColor !== 'transparent' ? '8px 12px' : undefined,
+        borderRadius: block.backgroundColor && block.backgroundColor !== 'transparent' ? '4px' : undefined,
+        margin: block.backgroundColor && block.backgroundColor !== 'transparent' ? '2px 0' : undefined,
+      } : undefined
+    };
+
+    switch (block.type) {
+      case 'heading1':
+        return (
+          <h1 className={`text-3xl font-bold mb-2 outline-none ${block.alignment === 'center' ? 'text-center' : block.alignment === 'right' ? 'text-right' : ''}`} {...contentEditableProps} />
+        );
+      case 'heading2':
+        return (
+          <h2 className={`text-2xl font-semibold mb-2 outline-none ${block.alignment === 'center' ? 'text-center' : block.alignment === 'right' ? 'text-right' : ''}`} {...contentEditableProps} />
+        );
+      case 'heading3':
+        return (
+          <h3 className={`text-xl font-medium mb-2 outline-none ${block.alignment === 'center' ? 'text-center' : block.alignment === 'right' ? 'text-right' : ''}`} {...contentEditableProps} />
+        );
+      case 'quote':
+        return (
+          <blockquote className={`border-l-4 border-gray-300 pl-4 italic text-gray-600 outline-none ${block.alignment === 'center' ? 'text-center' : block.alignment === 'right' ? 'text-right' : ''}`} {...contentEditableProps} />
+        );
+      case 'code':
+        return (
+          <pre className={`bg-gray-100 p-3 rounded font-mono text-sm overflow-x-auto outline-none ${block.alignment === 'center' ? 'text-center' : block.alignment === 'right' ? 'text-right' : ''}`} {...contentEditableProps} />
+        );
+      case 'list':
+        return (
+          <div className={`flex items-start gap-2 ${block.alignment === 'center' ? 'justify-center' : block.alignment === 'right' ? 'justify-end' : ''}`}>
+            <span className="mt-2 w-1.5 h-1.5 bg-gray-400 rounded-full flex-shrink-0"></span>
+            <div className="flex-1 outline-none" {...contentEditableProps} />
+          </div>
+        );
+      case 'numbered-list':
+        return (
+          <div className={`flex items-start gap-2 ${block.alignment === 'center' ? 'justify-center' : block.alignment === 'right' ? 'justify-end' : ''}`}>
+            <span className="mt-0.5 text-sm text-gray-500 flex-shrink-0">{index + 1}.</span>
+            <div className="flex-1 outline-none" {...contentEditableProps} />
+          </div>
+        );
+      case 'todo':
+        return (
+          <div className={`flex items-start gap-2 ${block.alignment === 'center' ? 'justify-center' : block.alignment === 'right' ? 'justify-end' : ''}`}>
+            <input 
+              type="checkbox" 
+              checked={block.checked || false}
+              onChange={(e) => updateBlock(block.id, { checked: e.target.checked })}
+              className="mt-1 flex-shrink-0"
+              disabled={readOnly}
+            />
+            <div className={`flex-1 outline-none ${block.checked ? 'line-through text-gray-500' : ''}`} {...contentEditableProps} />
+          </div>
+        );
+      case 'divider':
+        return <hr className="my-4 border-gray-300" />;
+      case 'callout':
+        return (
+          <div className={`bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r ${block.alignment === 'center' ? 'text-center' : block.alignment === 'right' ? 'text-right' : ''}`}>
+            <div className="outline-none" {...contentEditableProps} />
+          </div>
+        );
+      default:
+        return (
+          <div className={`outline-none leading-relaxed ${block.alignment === 'center' ? 'text-center' : block.alignment === 'right' ? 'text-right' : ''}`} {...contentEditableProps} />
+        );
+    }
+  };
+
   return (
     <div className={`min-h-[400px] bg-white dark:bg-gray-900 font-sans ${className}`}>
       <main className="max-w-4xl mx-auto p-4 sm:p-8 lg:p-12">
@@ -219,14 +320,18 @@ const NotionEditorFormIntegrated: React.FC<NotionEditorProps> = ({
           {content.map((block, index) => (
             <div key={block.id} className="group" data-block-id={block.id}>
               <div className="flex items-start gap-2 py-1">
+                {!readOnly && (
+                  <div className="flex-shrink-0 w-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600"
+                      onClick={() => setShowBlockMenu(showBlockMenu === block.id ? null : block.id)}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
                 <div className="flex-1">
-                  <div
-                    contentEditable={!readOnly}
-                    suppressContentEditableWarning
-                    className="w-full border-none outline-none bg-transparent resize-none overflow-hidden focus:outline-none text-gray-800 dark:text-gray-200 leading-relaxed min-h-[1.5rem] text-base"
-                    onBlur={(e) => updateBlock(block.id, { content: e.currentTarget.innerHTML || '' })}
-                    dangerouslySetInnerHTML={{ __html: block.content }}
-                  />
+                  {renderBlock(block, index)}
                 </div>
               </div>
             </div>
