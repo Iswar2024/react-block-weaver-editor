@@ -497,14 +497,15 @@ const NotionEditor = () => {
             <div
               data-block-id={block.id}
               ref={isActive ? activeBlockRef : null}
-              className={`py-2 outline-none min-h-[1.5rem] ${isActive ? 'ring-2 ring-blue-500 ring-opacity-20' : ''} ${block.content === '' ? 'text-gray-400' : ''}`}
+              className={`py-2 outline-none min-h-[1.5rem] ${isActive ? 'ring-2 ring-blue-500 ring-opacity-20' : ''}`}
               style={blockStyle}
               contentEditable
               suppressContentEditableWarning
               onInput={(e) => handleContentChange(block.id, e.currentTarget.textContent || '')}
               onFocus={() => setActiveBlockId(block.id)}
               onKeyDown={(e) => handleKeyDown(e, block.id)}
-              dangerouslySetInnerHTML={{ __html: block.content || "Type '/' for commands" }}
+              dangerouslySetInnerHTML={{ __html: block.content }}
+              placeholder="Type '/' for commands"
             />
             <button
               onClick={() => deleteBlock(block.id)}
