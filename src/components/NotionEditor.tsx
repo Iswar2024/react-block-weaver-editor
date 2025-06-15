@@ -36,8 +36,10 @@ import {
   Music,
   Bookmark,
   MapPin,
-  Clock
+  Clock,
+  ChevronRight
 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell } from 'recharts';
 
 // Block Interface
 interface Block {
@@ -52,6 +54,8 @@ interface Block {
   backgroundColor?: string;
   tableData?: { headers: string[]; rows: string[][] };
   chartData?: { labels: string[]; values: number[] };
+  toggleTitle?: string;
+  toggleContent?: string;
 }
 
 const NotionEditor = () => {
@@ -142,7 +146,9 @@ const NotionEditor = () => {
       collapsed: type === 'toggle' ? false : undefined,
       children: type === 'toggle' ? [] : undefined,
       tableData: type === 'table' ? { headers: ['Column 1', 'Column 2'], rows: [['', ''], ['', '']] } : undefined,
-      chartData: (type === 'chart-bar' || type === 'chart-pie') ? { labels: ['A', 'B', 'C'], values: [10, 20, 30] } : undefined
+      chartData: (type === 'chart-bar' || type === 'chart-pie') ? { labels: ['A', 'B', 'C'], values: [10, 20, 30] } : undefined,
+      toggleTitle: type === 'toggle' ? '' : undefined,
+      toggleContent: type === 'toggle' ? '' : undefined
     };
 
     setContent(currentContent => {
@@ -175,43 +181,6 @@ const NotionEditor = () => {
     );
   }, []);
 
-  const changeBlockType = useCallback((id: string, newType: Block['type']) => {
-    const block = content.find(b => b.id === id);
-    if (!block) return;
-
-    const updates: Partial<Block> = { type: newType };
-    
-    // Reset type-specific properties
-    if (newType === 'todo') {
-      updates.checked = false;
-    } else {
-      updates.checked = undefined;
-    }
-    
-    if (newType === 'toggle') {
-      updates.collapsed = false;
-      updates.children = [];
-    } else {
-      updates.collapsed = undefined;
-      updates.children = undefined;
-    }
-
-    if (newType === 'table') {
-      updates.tableData = { headers: ['Column 1', 'Column 2'], rows: [['', ''], ['', '']] };
-    } else {
-      updates.tableData = undefined;
-    }
-
-    if (newType === 'chart-bar' || newType === 'chart-pie') {
-      updates.chartData = { labels: ['A', 'B', 'C'], values: [10, 20, 30] };
-    } else {
-      updates.chartData = undefined;
-    }
-
-    updateBlock(id, updates);
-    setShowTypeMenu(null);
-  }, [content, updateBlock]);
-  
   // Handle slash command
   const handleSlashCommand = useCallback((e: React.KeyboardEvent, blockId: string) => {
     const block = content.find(b => b.id === blockId);
@@ -350,6 +319,57 @@ const NotionEditor = () => {
     }
   };
 
+  // Table management functions
+  const addTableRow = (blockId: string) => {
+    const block = content.find(b => b.id === blockId);
+    if (block && block.tableData) {
+      const newRow = new Array(block.tableData.headers.length).fill('');
+      const newTableData = {
+        ...block.tableData,
+        rows: [...block.tableData.rows, newRow]
+      };
+      updateBlock(blockId, { tableData: newTableData });
+    }
+  };
+
+  const addTableColumn = (blockId: string) => {
+    const block = content.find(b => b.id === blockId);
+    if (block && block.tableData) {
+      const newHeaders = [...block.tableData.headers, `Column ${block.tableData.headers.length + 1}`];
+      const newRows = block.tableData.rows.map(row => [...row, '']);
+      const newTableData = {
+        headers: newHeaders,
+        rows: newRows
+      };
+      updateBlock(blockId, { tableData: newTableData });
+    }
+  };
+
+  const removeTableRow = (blockId: string, rowIndex: number) => {
+    const block = content.find(b => b.id === blockId);
+    if (block && block.tableData && block.tableData.rows.length > 1) {
+      const newRows = block.tableData.rows.filter((_, index) => index !== rowIndex);
+      const newTableData = {
+        ...block.tableData,
+        rows: newRows
+      };
+      updateBlock(blockId, { tableData: newTableData });
+    }
+  };
+
+  const removeTableColumn = (blockId: string, colIndex: number) => {
+    const block = content.find(b => b.id === blockId);
+    if (block && block.tableData && block.tableData.headers.length > 1) {
+      const newHeaders = block.tableData.headers.filter((_, index) => index !== colIndex);
+      const newRows = block.tableData.rows.map(row => row.filter((_, index) => index !== colIndex));
+      const newTableData = {
+        headers: newHeaders,
+        rows: newRows
+      };
+      updateBlock(blockId, { tableData: newTableData });
+    }
+  };
+
   // Block styling
   const getBlockClassName = (block: Block) => {
     const baseClasses = "w-full border-none outline-none bg-transparent resize-none overflow-hidden focus:outline-none";
@@ -370,8 +390,8 @@ const NotionEditor = () => {
       divider: '',
       image: 'w-full h-auto',
       table: 'w-full',
-      'chart-bar': 'w-full h-64 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center',
-      'chart-pie': 'w-full h-64 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center',
+      'chart-bar': 'w-full h-64 bg-gray-50 dark:bg-gray-800 rounded-lg',
+      'chart-pie': 'w-full h-64 bg-gray-50 dark:bg-gray-800 rounded-lg',
       calendar: 'w-full h-64 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center',
       file: 'w-full p-4 bg-gray-50 dark:bg-gray-800 rounded-lg',
       video: 'w-full aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center',
@@ -400,7 +420,7 @@ const NotionEditor = () => {
       case 'list': return 'List item';
       case 'numbered-list': return 'Numbered list item';
       case 'todo': return 'To-do';
-      case 'toggle': return 'Toggle';
+      case 'toggle': return 'Toggle title';
       case 'callout': return 'Type your callout...';
       default: return `Type your ${block.type}...`;
     }
@@ -411,11 +431,25 @@ const NotionEditor = () => {
       case 'table':
         return (
           <div className="w-full overflow-x-auto">
+            <div className="flex gap-2 mb-2">
+              <button
+                onClick={() => addTableRow(block.id)}
+                className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded"
+              >
+                Add Row
+              </button>
+              <button
+                onClick={() => addTableColumn(block.id)}
+                className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded"
+              >
+                Add Column
+              </button>
+            </div>
             <table className="min-w-full border border-gray-200 dark:border-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
                   {block.tableData?.headers.map((header, index) => (
-                    <th key={index} className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 text-left font-medium">
+                    <th key={index} className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 text-left font-medium relative group">
                       <input
                         type="text"
                         value={header}
@@ -427,15 +461,23 @@ const NotionEditor = () => {
                         className="w-full bg-transparent border-none outline-none"
                         placeholder={`Header ${index + 1}`}
                       />
+                      {block.tableData!.headers.length > 1 && (
+                        <button
+                          onClick={() => removeTableColumn(block.id, index)}
+                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-100 rounded p-1"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {block.tableData?.rows.map((row, rowIndex) => (
-                  <tr key={rowIndex}>
+                  <tr key={rowIndex} className="group">
                     {row.map((cell, cellIndex) => (
-                      <td key={cellIndex} className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                      <td key={cellIndex} className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 relative">
                         <input
                           type="text"
                           value={cell}
@@ -447,6 +489,14 @@ const NotionEditor = () => {
                           className="w-full bg-transparent border-none outline-none"
                           placeholder="Enter data"
                         />
+                        {cellIndex === 0 && block.tableData!.rows.length > 1 && (
+                          <button
+                            onClick={() => removeTableRow(block.id, rowIndex)}
+                            className="absolute left-1 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-100 rounded p-1"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
                       </td>
                     ))}
                   </tr>
@@ -457,20 +507,109 @@ const NotionEditor = () => {
         );
       
       case 'chart-bar':
+        const barData = block.chartData?.labels.map((label, index) => ({
+          name: label,
+          value: block.chartData?.values[index] || 0
+        })) || [];
+        
         return (
           <div className={getBlockClassName(block)}>
-            <BarChart3 className="w-16 h-16 text-gray-400 mx-auto" />
-            <p className="text-gray-500 mt-2">Bar Chart Placeholder</p>
-            <p className="text-xs text-gray-400">Chart integration coming soon</p>
+            <div className="p-4">
+              <h4 className="text-sm font-medium mb-4">Bar Chart</h4>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={barData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#3b82f6" />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="mt-4 space-y-2">
+                <p className="text-xs text-gray-500">Edit chart data:</p>
+                {block.chartData?.labels.map((label, index) => (
+                  <div key={index} className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      value={label}
+                      onChange={(e) => {
+                        const newChartData = { ...block.chartData! };
+                        newChartData.labels[index] = e.target.value;
+                        updateBlock(block.id, { chartData: newChartData });
+                      }}
+                      className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                      placeholder="Label"
+                    />
+                    <input
+                      type="number"
+                      value={block.chartData?.values[index] || 0}
+                      onChange={(e) => {
+                        const newChartData = { ...block.chartData! };
+                        newChartData.values[index] = Number(e.target.value);
+                        updateBlock(block.id, { chartData: newChartData });
+                      }}
+                      className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                      placeholder="Value"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         );
       
       case 'chart-pie':
+        const pieData = block.chartData?.labels.map((label, index) => ({
+          name: label,
+          value: block.chartData?.values[index] || 0
+        })) || [];
+        
+        const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'];
+        
         return (
           <div className={getBlockClassName(block)}>
-            <PieChart className="w-16 h-16 text-gray-400 mx-auto" />
-            <p className="text-gray-500 mt-2">Pie Chart Placeholder</p>
-            <p className="text-xs text-gray-400">Chart integration coming soon</p>
+            <div className="p-4">
+              <h4 className="text-sm font-medium mb-4">Pie Chart</h4>
+              <ResponsiveContainer width="100%" height={200}>
+                <RechartsPieChart>
+                  <Tooltip />
+                  <RechartsPieChart data={pieData} dataKey="value">
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </RechartsPieChart>
+                </RechartsPieChart>
+              </ResponsiveContainer>
+              <div className="mt-4 space-y-2">
+                <p className="text-xs text-gray-500">Edit chart data:</p>
+                {block.chartData?.labels.map((label, index) => (
+                  <div key={index} className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      value={label}
+                      onChange={(e) => {
+                        const newChartData = { ...block.chartData! };
+                        newChartData.labels[index] = e.target.value;
+                        updateBlock(block.id, { chartData: newChartData });
+                      }}
+                      className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                      placeholder="Label"
+                    />
+                    <input
+                      type="number"
+                      value={block.chartData?.values[index] || 0}
+                      onChange={(e) => {
+                        const newChartData = { ...block.chartData! };
+                        newChartData.values[index] = Number(e.target.value);
+                        updateBlock(block.id, { chartData: newChartData });
+                      }}
+                      className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                      placeholder="Value"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         );
       
@@ -660,11 +799,7 @@ const NotionEditor = () => {
                 onClick={() => toggleCollapse(block.id)}
                 className="mt-1 flex-shrink-0 p-0.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
               >
-                <div className={`transform transition-transform ${block.collapsed ? '' : 'rotate-90'}`}>
-                  <svg className="w-3 h-3 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
+                <ChevronRight className={`w-4 h-4 text-gray-500 transition-transform ${block.collapsed ? '' : 'rotate-90'}`} />
               </button>
             )}
             
@@ -693,28 +828,60 @@ const NotionEditor = () => {
             ) : block.type === 'callout' ? (
                  <div className={getBlockClassName(block)}>
                     <span className="text-yellow-500 mt-1 flex-shrink-0 text-lg">💡</span>
-                    <div
+                    <div className="flex-1 relative">
+                      <div
+                          contentEditable
+                          suppressContentEditableWarning
+                          className="w-full focus:outline-none bg-transparent"
+                          onBlur={(e) => updateBlock(block.id, { content: e.currentTarget.innerHTML || '' })}
+                          onMouseUp={(e) => handleTextSelection(e, block.id)}
+                          dangerouslySetInnerHTML={{ __html: block.content }}
+                       />
+                       {!block.content && (
+                         <div className="absolute inset-0 pointer-events-none text-gray-400 dark:text-gray-500">
+                           {getPlaceholderText(block)}
+                         </div>
+                       )}
+                     </div>
+                 </div>
+            ) : block.type === 'toggle' ? (
+              <div className="flex-1">
+                <div className="relative">
+                  <div
+                    contentEditable
+                    suppressContentEditableWarning
+                    className={getBlockClassName(block)}
+                    onBlur={(e) => updateBlock(block.id, { toggleTitle: e.currentTarget.innerHTML || '' })}
+                    onKeyDown={(e) => handleSlashCommand(e, block.id)}
+                    onMouseUp={(e) => handleTextSelection(e, block.id)}
+                    dangerouslySetInnerHTML={{ __html: block.toggleTitle || '' }}
+                  />
+                  {!block.toggleTitle && (
+                    <div className="absolute inset-0 pointer-events-none text-gray-400 dark:text-gray-500">
+                      Type content here...
+                    </div>
+                  )}
+                </div>
+                {!block.collapsed && (
+                  <div className="ml-6 mt-2 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
+                    <div className="relative">
+                      <div
                         contentEditable
                         suppressContentEditableWarning
-                        className="w-full focus:outline-none bg-transparent relative"
-                        style={{
-                          ...(placeholderText && {
-                            position: 'relative'
-                          })
-                        }}
-                        onBlur={(e) => updateBlock(block.id, { content: e.currentTarget.innerHTML || '' })}
+                        className="w-full border-none outline-none bg-transparent resize-none overflow-hidden focus:outline-none text-gray-800 dark:text-gray-200 leading-relaxed min-h-[1.5rem] text-base"
+                        onBlur={(e) => updateBlock(block.id, { toggleContent: e.currentTarget.innerHTML || '' })}
                         onMouseUp={(e) => handleTextSelection(e, block.id)}
-                        dangerouslySetInnerHTML={{ __html: block.content }}
-                     />
-                     {placeholderText && (
-                       <div 
-                         className="absolute inset-0 pointer-events-none text-gray-400 dark:text-gray-500"
-                         style={{ left: '3rem' }}
-                       >
-                         {placeholderText}
-                       </div>
-                     )}
-                 </div>
+                        dangerouslySetInnerHTML={{ __html: block.toggleContent || '' }}
+                      />
+                      {!block.toggleContent && (
+                        <div className="absolute inset-0 pointer-events-none text-gray-400 dark:text-gray-500">
+                          Type content here...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : ['table', 'chart-bar', 'chart-pie', 'calendar', 'file', 'video', 'audio', 'bookmark'].includes(block.type) ? (
               renderSpecialBlock(block)
             ) : (
@@ -728,23 +895,9 @@ const NotionEditor = () => {
                   onMouseUp={(e) => handleTextSelection(e, block.id)}
                   dangerouslySetInnerHTML={{ __html: block.content }}
                 />
-                {placeholderText && (
-                  <div 
-                    className="absolute inset-0 pointer-events-none text-gray-400 dark:text-gray-500"
-                    style={{
-                      display: block.content ? 'none' : 'block',
-                      top: 0,
-                      left: 0
-                    }}
-                  >
-                    {placeholderText}
-                  </div>
-                )}
-
-                {/* Nested content for toggle blocks */}
-                {block.type === 'toggle' && !block.collapsed && block.children && (
-                  <div className="ml-4 mt-2 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
-                    {block.children.map((child, childIndex) => renderBlock(child, childIndex))}
+                {!block.content && (
+                  <div className="absolute inset-0 pointer-events-none text-gray-400 dark:text-gray-500">
+                    {getPlaceholderText(block)}
                   </div>
                 )}
               </div>
@@ -752,7 +905,7 @@ const NotionEditor = () => {
           </div>
 
           {/* Alignment controls */}
-          {!['image', 'divider', 'callout', 'table', 'chart-bar', 'chart-pie', 'calendar', 'file', 'video', 'audio', 'bookmark'].includes(block.type) && (
+          {!['image', 'divider', 'callout', 'table', 'chart-bar', 'chart-pie', 'calendar', 'file', 'video', 'audio', 'bookmark', 'toggle'].includes(block.type) && (
             <div className={`flex items-center space-x-1 transition-opacity duration-200 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
               <button
                 onClick={() => updateBlock(block.id, { alignment: 'left' })}
