@@ -93,6 +93,22 @@ const NotionEditor = () => {
     'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=800&q=80'
   ];
 
+  // Color palette definition
+  const colorPalette = [
+    { name: 'Default', text: '#000000', bg: 'transparent' },
+    { name: 'Gray', text: '#6B7280', bg: '#F3F4F6' },
+    { name: 'Brown', text: '#92400E', bg: '#FEF3C7' },
+    { name: 'Orange', text: '#EA580C', bg: '#FED7AA' },
+    { name: 'Yellow', text: '#D97706', bg: '#FEF3C7' },
+    { name: 'Green', text: '#16A34A', bg: '#DCFCE7' },
+    { name: 'Blue', text: '#2563EB', bg: '#DBEAFE' },
+    { name: 'Purple', text: '#9333EA', bg: '#E9D5FF' },
+    { name: 'Pink', text: '#DB2777', bg: '#FCE7F3' },
+    { name: 'Red', text: '#DC2626', bg: '#FEE2E2' },
+    { name: 'Teal', text: '#0D9488', bg: '#CCFBF1' },
+    { name: 'Indigo', text: '#4338CA', bg: '#E0E7FF' }
+  ];
+
   // Block type definitions with new options
   const blockTypes = [
     { type: 'paragraph', label: 'Text', icon: Type, description: 'Just start writing with plain text.' },
