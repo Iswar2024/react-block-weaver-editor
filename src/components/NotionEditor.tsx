@@ -221,15 +221,26 @@ const NotionEditor = () => {
     } else if (e.key === 'Escape') {
       setShowSlashMenu(null);
     } else if (e.key === 'Enter' && !e.shiftKey) {
-      // Only create new block if the current block is empty and user presses Enter
-      // This allows natural line breaks when typing content
-      if (block.content.trim() === '') {
+      // Handle Enter key based on block type
+      if (block.type === 'list' || block.type === 'numbered-list') {
+        // For list items, create a new list item of the same type
+        if (block.content.trim() === '') {
+          // If current list item is empty, convert to paragraph
+          e.preventDefault();
+          updateBlock(blockId, { type: 'paragraph' });
+        } else {
+          // Create new list item
+          e.preventDefault();
+          addBlock(block.type, blockId);
+        }
+      } else if (block.content.trim() === '') {
+        // Only create new block if the current block is empty
         e.preventDefault();
         addBlock('paragraph', blockId);
       }
-      // For blocks with content, let the default behavior create a new line
+      // For blocks with content (non-list types), let the default behavior create a new line
     }
-  }, [content, addBlock]);
+  }, [content, addBlock, updateBlock]);
 
   // Handle text selection for formatting
   const handleTextSelection = (event: React.MouseEvent, blockId: string) => {
