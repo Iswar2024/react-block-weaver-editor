@@ -244,6 +244,14 @@ const NotionEditor = () => {
     setShowTypeMenu(null);
   }, [content, updateBlock]);
 
+  // Add missing toggleAudioPlayback function
+  const toggleAudioPlayback = (blockId: string) => {
+    setIsPlaying(prev => ({
+      ...prev,
+      [blockId]: !prev[blockId]
+    }));
+  };
+
   // Handle slash command
   const handleSlashCommand = useCallback((e: React.KeyboardEvent, blockId: string) => {
     const block = content.find(b => b.id === blockId);
@@ -502,7 +510,7 @@ const NotionEditor = () => {
       paragraph: 'text-gray-800 dark:text-gray-200 leading-relaxed min-h-[1.5rem] text-base',
       heading1: 'text-3xl font-bold text-gray-900 dark:text-gray-100 leading-tight min-h-[2.5rem]',
       heading2: 'text-2xl font-semibold text-gray-900 dark:text-gray-100 leading-tight min-h-[2rem]',
-      heading3: 'text-xl font-medium text-gray-900 dark:text-gray-100 leading-tight min-h-[1.75rem]',
+      heading3: 'text-xl font-medium text-gray-900 dark:text-gray-200 leading-tight min-h-[1.75rem]',
       quote: 'text-gray-700 dark:text-gray-300 italic text-lg leading-relaxed border-l-4 border-gray-300 dark:border-gray-600 pl-4 min-h-[1.5rem]',
       code: 'font-mono bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-md p-4 text-sm whitespace-pre-wrap min-h-[3rem]',
       list: 'text-gray-800 dark:text-gray-200 leading-relaxed min-h-[1.5rem]',
@@ -1040,19 +1048,22 @@ const NotionEditor = () => {
                   </button>
                   {showTypeMenu === block.id && (
                     <div className="absolute left-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 py-2 w-64 max-h-80 overflow-y-auto">
-                      <p className="px-3 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Turn into</p>
-                      {blockTypes.map(({ type, label, icon: Icon, description }) => (
-                        <button
-                          key={type}
-                          onClick={() => changeBlockType(block.id, type as Block['type'])}
-                          className={`w-full flex items-center space-x-3 px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                            block.type === type ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : ''
-                          }`}
-                        >
-                          <Icon className="w-4 h-4 flex-shrink-0" />
-                          <span className="text-sm font-medium">{label}</span>
-                        </button>
-                      ))}
+                      <p className="px-3 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Add block below</p>
+                      <div className="max-h-64 overflow-y-auto">
+                        {blockTypes.map(({ type, label, icon: Icon, description }) => (
+                          <button
+                            key={type}
+                            onClick={() => addBlock(type, block.id)}
+                            className="w-full flex items-start space-x-3 px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            <Icon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1">
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</div>
+                              <div className="text-xs text-gray-500">{description}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1465,7 +1476,7 @@ const NotionEditor = () => {
                 >
                   Upload a file
                 </button>
-                <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
+                <input type="file" ref={fileInputRef} onChange={(e) => handleFileUpload(e, isImageModalOpen, 'image')} className="hidden" accept="image/*" />
                 <p className="text-xs text-gray-500 mt-2">Maximum file size: 5MB</p>
               </div>
 
