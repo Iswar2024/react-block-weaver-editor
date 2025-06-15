@@ -39,7 +39,7 @@ import {
   Clock,
   ChevronRight
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell, Pie } from 'recharts';
 
 // Block Interface
 interface Block {
@@ -180,6 +180,32 @@ const NotionEditor = () => {
       )
     );
   }, []);
+
+  const changeBlockType = useCallback((id: string, newType: Block['type']) => {
+    const block = content.find(b => b.id === id);
+    if (!block) return;
+
+    const updates: Partial<Block> = {
+      type: newType,
+      checked: newType === 'todo' ? false : undefined,
+      collapsed: newType === 'toggle' ? false : undefined,
+      children: newType === 'toggle' ? [] : undefined,
+      tableData: newType === 'table' ? { headers: ['Column 1', 'Column 2'], rows: [['', ''], ['', '']] } : undefined,
+      chartData: (newType === 'chart-bar' || newType === 'chart-pie') ? { labels: ['A', 'B', 'C'], values: [10, 20, 30] } : undefined,
+      toggleTitle: newType === 'toggle' ? block.content : undefined,
+      toggleContent: newType === 'toggle' ? '' : undefined
+    };
+
+    // Preserve content for compatible types
+    if (newType !== 'toggle') {
+      updates.content = block.content;
+    } else {
+      updates.content = '';
+    }
+
+    updateBlock(id, updates);
+    setShowTypeMenu(null);
+  }, [content, updateBlock]);
 
   // Handle slash command
   const handleSlashCommand = useCallback((e: React.KeyboardEvent, blockId: string) => {
@@ -572,12 +598,20 @@ const NotionEditor = () => {
               <h4 className="text-sm font-medium mb-4">Pie Chart</h4>
               <ResponsiveContainer width="100%" height={200}>
                 <RechartsPieChart>
-                  <Tooltip />
-                  <RechartsPieChart data={pieData} dataKey="value">
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
                     {pieData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
-                  </RechartsPieChart>
+                  </Pie>
+                  <Tooltip />
                 </RechartsPieChart>
               </ResponsiveContainer>
               <div className="mt-4 space-y-2">
