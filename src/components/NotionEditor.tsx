@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Bold,
@@ -222,11 +221,13 @@ const NotionEditor = () => {
     } else if (e.key === 'Escape') {
       setShowSlashMenu(null);
     } else if (e.key === 'Enter' && !e.shiftKey) {
-      // Only create new block if content is not empty and not in specific block types
-      if (block.content.trim() && !['code', 'table', 'chart-bar', 'chart-pie'].includes(block.type)) {
+      // Only create new block if the current block is empty and user presses Enter
+      // This allows natural line breaks when typing content
+      if (block.content.trim() === '') {
         e.preventDefault();
         addBlock('paragraph', blockId);
       }
+      // For blocks with content, let the default behavior create a new line
     }
   }, [content, addBlock]);
 
@@ -570,7 +571,7 @@ const NotionEditor = () => {
                             <Icon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
                             <div className="flex-1">
                               <div className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">{description}</div>
+                              <div className="text-xs text-gray-400">{description}</div>
                             </div>
                           </button>
                         ))}
