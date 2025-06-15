@@ -157,6 +157,14 @@ const NotionEditor = () => {
 
     setShowBlockMenu(null);
     setShowSlashMenu(null);
+    
+    // Focus the new block after it's created
+    setTimeout(() => {
+      const newBlockElement = document.querySelector(`[data-block-id="${newBlock.id}"] [contenteditable="true"]`);
+      if (newBlockElement) {
+        (newBlockElement as HTMLElement).focus();
+      }
+    }, 0);
   }, []);
 
   const updateBlock = useCallback((id: string, updates: Partial<Block>) => {
@@ -683,7 +691,19 @@ const NotionEditor = () => {
                   contentEditable
                   suppressContentEditableWarning
                   className={getBlockClassName(block)}
-                  data-placeholder={!block.content ? (block.type === 'paragraph' ? "Type '/' for commands" : `Type your ${block.type}...`) : ''}
+                  data-placeholder={!block.content ? (
+                    block.type === 'paragraph' ? "Type '/' for commands" :
+                    block.type === 'heading1' ? 'Heading 1' :
+                    block.type === 'heading2' ? 'Heading 2' :
+                    block.type === 'heading3' ? 'Heading 3' :
+                    block.type === 'quote' ? 'Quote' :
+                    block.type === 'code' ? 'Type your code...' :
+                    block.type === 'list' ? 'List item' :
+                    block.type === 'numbered-list' ? 'Numbered list item' :
+                    block.type === 'todo' ? 'To-do' :
+                    block.type === 'toggle' ? 'Toggle' :
+                    `Type your ${block.type}...`
+                  ) : ''}
                   onBlur={(e) => updateBlock(block.id, { content: e.currentTarget.innerHTML || '' })}
                   onKeyDown={(e) => handleSlashCommand(e, block.id)}
                   onMouseUp={(e) => handleTextSelection(e, block.id)}
