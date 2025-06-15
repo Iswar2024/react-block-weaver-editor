@@ -3,7 +3,7 @@ import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import NotionEditor from './NotionEditor';
+import NotionEditorFormIntegrated from './NotionEditorFormIntegrated';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
@@ -168,7 +168,7 @@ const NotionEditorForm: React.FC<NotionEditorFormProps> = ({
                         name="editorContent"
                         control={form.control}
                         render={({ field: { onChange, value } }) => (
-                          <NotionEditor
+                          <NotionEditorFormIntegrated
                             initialContent={value}
                             onChange={onChange}
                           />
