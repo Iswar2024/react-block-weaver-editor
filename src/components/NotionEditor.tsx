@@ -345,6 +345,29 @@ const NotionEditor = () => {
     }
   };
 
+  // Chart data management functions
+  const addChartDataPoint = (blockId: string) => {
+    const block = content.find(b => b.id === blockId);
+    if (block && block.chartData) {
+      const newChartData = {
+        labels: [...block.chartData.labels, `Item ${block.chartData.labels.length + 1}`],
+        values: [...block.chartData.values, 0]
+      };
+      updateBlock(blockId, { chartData: newChartData });
+    }
+  };
+
+  const removeChartDataPoint = (blockId: string, index: number) => {
+    const block = content.find(b => b.id === blockId);
+    if (block && block.chartData && block.chartData.labels.length > 1) {
+      const newChartData = {
+        labels: block.chartData.labels.filter((_, i) => i !== index),
+        values: block.chartData.values.filter((_, i) => i !== index)
+      };
+      updateBlock(blockId, { chartData: newChartData });
+    }
+  };
+
   // Table management functions
   const addTableRow = (blockId: string) => {
     const block = content.find(b => b.id === blockId);
@@ -551,34 +574,53 @@ const NotionEditor = () => {
                   <Bar dataKey="value" fill="#3b82f6" />
                 </BarChart>
               </ResponsiveContainer>
-              <div className="mt-4 space-y-2">
-                <p className="text-xs text-gray-500">Edit chart data:</p>
-                {block.chartData?.labels.map((label, index) => (
-                  <div key={index} className="flex gap-2 items-center">
-                    <input
-                      type="text"
-                      value={label}
-                      onChange={(e) => {
-                        const newChartData = { ...block.chartData! };
-                        newChartData.labels[index] = e.target.value;
-                        updateBlock(block.id, { chartData: newChartData });
-                      }}
-                      className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
-                      placeholder="Label"
-                    />
-                    <input
-                      type="number"
-                      value={block.chartData?.values[index] || 0}
-                      onChange={(e) => {
-                        const newChartData = { ...block.chartData! };
-                        newChartData.values[index] = Number(e.target.value);
-                        updateBlock(block.id, { chartData: newChartData });
-                      }}
-                      className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
-                      placeholder="Value"
-                    />
-                  </div>
-                ))}
+              <div className="mt-4">
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => addChartDataPoint(block.id)}
+                    className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1 rounded"
+                  >
+                    Add Data Point
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500">Edit chart data:</p>
+                  {block.chartData?.labels.map((label, index) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={label}
+                        onChange={(e) => {
+                          const newChartData = { ...block.chartData! };
+                          newChartData.labels[index] = e.target.value;
+                          updateBlock(block.id, { chartData: newChartData });
+                        }}
+                        className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                        placeholder="Label"
+                      />
+                      <input
+                        type="number"
+                        value={block.chartData?.values[index] || 0}
+                        onChange={(e) => {
+                          const newChartData = { ...block.chartData! };
+                          newChartData.values[index] = Number(e.target.value);
+                          updateBlock(block.id, { chartData: newChartData });
+                        }}
+                        className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                        placeholder="Value"
+                      />
+                      {block.chartData!.labels.length > 1 && (
+                        <button
+                          onClick={() => removeChartDataPoint(block.id, index)}
+                          className="text-red-500 hover:bg-red-100 rounded p-1"
+                          title="Remove data point"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -590,7 +632,7 @@ const NotionEditor = () => {
           value: block.chartData?.values[index] || 0
         })) || [];
         
-        const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'];
+        const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
         
         return (
           <div className={getBlockClassName(block)}>
@@ -614,34 +656,53 @@ const NotionEditor = () => {
                   <Tooltip />
                 </RechartsPieChart>
               </ResponsiveContainer>
-              <div className="mt-4 space-y-2">
-                <p className="text-xs text-gray-500">Edit chart data:</p>
-                {block.chartData?.labels.map((label, index) => (
-                  <div key={index} className="flex gap-2 items-center">
-                    <input
-                      type="text"
-                      value={label}
-                      onChange={(e) => {
-                        const newChartData = { ...block.chartData! };
-                        newChartData.labels[index] = e.target.value;
-                        updateBlock(block.id, { chartData: newChartData });
-                      }}
-                      className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
-                      placeholder="Label"
-                    />
-                    <input
-                      type="number"
-                      value={block.chartData?.values[index] || 0}
-                      onChange={(e) => {
-                        const newChartData = { ...block.chartData! };
-                        newChartData.values[index] = Number(e.target.value);
-                        updateBlock(block.id, { chartData: newChartData });
-                      }}
-                      className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
-                      placeholder="Value"
-                    />
-                  </div>
-                ))}
+              <div className="mt-4">
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => addChartDataPoint(block.id)}
+                    className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1 rounded"
+                  >
+                    Add Data Point
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500">Edit chart data:</p>
+                  {block.chartData?.labels.map((label, index) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={label}
+                        onChange={(e) => {
+                          const newChartData = { ...block.chartData! };
+                          newChartData.labels[index] = e.target.value;
+                          updateBlock(block.id, { chartData: newChartData });
+                        }}
+                        className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                        placeholder="Label"
+                      />
+                      <input
+                        type="number"
+                        value={block.chartData?.values[index] || 0}
+                        onChange={(e) => {
+                          const newChartData = { ...block.chartData! };
+                          newChartData.values[index] = Number(e.target.value);
+                          updateBlock(block.id, { chartData: newChartData });
+                        }}
+                        className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                        placeholder="Value"
+                      />
+                      {block.chartData!.labels.length > 1 && (
+                        <button
+                          onClick={() => removeChartDataPoint(block.id, index)}
+                          className="text-red-500 hover:bg-red-100 rounded p-1"
+                          title="Remove data point"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
