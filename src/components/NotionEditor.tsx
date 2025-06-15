@@ -30,7 +30,7 @@ import {
   Table,
   BarChart3,
   PieChart,
-  Calendar,
+  Calendar as CalendarIcon,
   FileText,
   Video,
   Music,
@@ -40,6 +40,8 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell, Pie } from 'recharts';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
 
 // Block Interface
 interface Block {
@@ -56,6 +58,7 @@ interface Block {
   chartData?: { labels: string[]; values: number[] };
   toggleTitle?: string;
   toggleContent?: string;
+  selectedDate?: Date;
 }
 
 const NotionEditor = () => {
@@ -105,7 +108,7 @@ const NotionEditor = () => {
     { type: 'table', label: 'Table', icon: Table, description: 'Create a table with data.' },
     { type: 'chart-bar', label: 'Bar Chart', icon: BarChart3, description: 'Display data as bar chart.' },
     { type: 'chart-pie', label: 'Pie Chart', icon: PieChart, description: 'Display data as pie chart.' },
-    { type: 'calendar', label: 'Calendar', icon: Calendar, description: 'Add a calendar view.' },
+    { type: 'calendar', label: 'Calendar', icon: CalendarIcon, description: 'Add a calendar view.' },
     { type: 'file', label: 'File', icon: FileText, description: 'Upload and embed files.' },
     { type: 'video', label: 'Video', icon: Video, description: 'Embed video content.' },
     { type: 'audio', label: 'Audio', icon: Music, description: 'Embed audio content.' },
@@ -148,7 +151,8 @@ const NotionEditor = () => {
       tableData: type === 'table' ? { headers: ['Column 1', 'Column 2'], rows: [['', ''], ['', '']] } : undefined,
       chartData: (type === 'chart-bar' || type === 'chart-pie') ? { labels: ['A', 'B', 'C'], values: [10, 20, 30] } : undefined,
       toggleTitle: type === 'toggle' ? '' : undefined,
-      toggleContent: type === 'toggle' ? '' : undefined
+      toggleContent: type === 'toggle' ? '' : undefined,
+      selectedDate: type === 'calendar' ? new Date() : undefined
     };
 
     setContent(currentContent => {
@@ -711,9 +715,31 @@ const NotionEditor = () => {
       case 'calendar':
         return (
           <div className={getBlockClassName(block)}>
-            <Calendar className="w-16 h-16 text-gray-400 mx-auto" />
-            <p className="text-gray-500 mt-2">Calendar View</p>
-            <p className="text-xs text-gray-400">Calendar integration coming soon</p>
+            <div className="w-full bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Calendar</h4>
+                {block.selectedDate && (
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Selected: {format(block.selectedDate, 'PPP')}
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-center">
+                <Calendar
+                  mode="single"
+                  selected={block.selectedDate}
+                  onSelect={(date) => updateBlock(block.id, { selectedDate: date })}
+                  className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+                />
+              </div>
+              {block.selectedDate && (
+                <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-md">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    📅 {format(block.selectedDate, 'EEEE, MMMM do, yyyy')}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         );
       
