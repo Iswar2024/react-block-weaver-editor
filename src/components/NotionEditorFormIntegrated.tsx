@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import {
@@ -72,14 +71,14 @@ interface Block {
   fileType?: string;
 }
 
-interface NotionEditorProps {
+interface NotionEditorFormIntegratedProps {
   initialContent?: Block[];
   onChange?: (content: Block[]) => void;
   readOnly?: boolean;
   className?: string;
 }
 
-const NotionEditorFormIntegrated: React.FC<NotionEditorProps> = ({
+const NotionEditorFormIntegrated: React.FC<NotionEditorFormIntegratedProps> = ({
   initialContent,
   onChange,
   readOnly = false,
