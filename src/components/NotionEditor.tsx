@@ -40,8 +40,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell, Pie } from 'recharts';
-import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import CalendarView, { CalendarEvent } from './CalendarView';
 
 // Block Interface
 interface Block {
@@ -59,6 +58,7 @@ interface Block {
   toggleTitle?: string;
   toggleContent?: string;
   selectedDate?: Date;
+  calendarEvents?: CalendarEvent[];
 }
 
 const NotionEditor = () => {
@@ -152,7 +152,8 @@ const NotionEditor = () => {
       chartData: (type === 'chart-bar' || type === 'chart-pie') ? { labels: ['A', 'B', 'C'], values: [10, 20, 30] } : undefined,
       toggleTitle: type === 'toggle' ? '' : undefined,
       toggleContent: type === 'toggle' ? '' : undefined,
-      selectedDate: type === 'calendar' ? new Date() : undefined
+      selectedDate: type === 'calendar' ? new Date() : undefined,
+      calendarEvents: type === 'calendar' ? [] : undefined
     };
 
     setContent(currentContent => {
@@ -725,11 +726,30 @@ const NotionEditor = () => {
                 )}
               </div>
               <div className="flex justify-center">
-                <Calendar
-                  mode="single"
-                  selected={block.selectedDate}
-                  onSelect={(date) => updateBlock(block.id, { selectedDate: date })}
-                  className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+                <CalendarView
+                  selectedDate={block.selectedDate}
+                  events={block.calendarEvents || []}
+                  onDateSelect={(date) => updateBlock(block.id, { selectedDate: date })}
+                  onEventCreate={(eventData) => {
+                    const newEvent: CalendarEvent = {
+                      ...eventData,
+                      id: `event-${Date.now()}`
+                    };
+                    const currentEvents = block.calendarEvents || [];
+                    updateBlock(block.id, { calendarEvents: [...currentEvents, newEvent] });
+                  }}
+                  onEventUpdate={(eventId, eventData) => {
+                    const currentEvents = block.calendarEvents || [];
+                    const updatedEvents = currentEvents.map(event =>
+                      event.id === eventId ? { ...event, ...eventData } : event
+                    );
+                    updateBlock(block.id, { calendarEvents: updatedEvents });
+                  }}
+                  onEventDelete={(eventId) => {
+                    const currentEvents = block.calendarEvents || [];
+                    const filteredEvents = currentEvents.filter(event => event.id !== eventId);
+                    updateBlock(block.id, { calendarEvents: filteredEvents });
+                  }}
                 />
               </div>
               {block.selectedDate && (
