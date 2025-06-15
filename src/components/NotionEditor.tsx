@@ -387,6 +387,25 @@ const NotionEditor = () => {
     return blockType ? blockType.icon : Type;
   };
 
+  const getPlaceholderText = (block: Block) => {
+    if (block.content) return '';
+    
+    switch (block.type) {
+      case 'paragraph': return "Type '/' for commands";
+      case 'heading1': return 'Heading 1';
+      case 'heading2': return 'Heading 2';
+      case 'heading3': return 'Heading 3';
+      case 'quote': return 'Quote';
+      case 'code': return 'Type your code...';
+      case 'list': return 'List item';
+      case 'numbered-list': return 'Numbered list item';
+      case 'todo': return 'To-do';
+      case 'toggle': return 'Toggle';
+      case 'callout': return 'Type your callout...';
+      default: return `Type your ${block.type}...`;
+    }
+  };
+
   const renderSpecialBlock = (block: Block) => {
     switch (block.type) {
       case 'table':
@@ -519,6 +538,7 @@ const NotionEditor = () => {
   const renderBlock = (block: Block, index: number) => {
     const isSelected = selectedBlock === block.id;
     const BlockIcon = getBlockTypeIcon(block.type);
+    const placeholderText = getPlaceholderText(block);
 
     return (
       <div key={block.id} className="group" data-block-id={block.id}>
@@ -590,7 +610,7 @@ const NotionEditor = () => {
                             <Icon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
                             <div className="flex-1">
                               <div className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</div>
-                              <div className="text-xs text-gray-400">{description}</div>
+                              <div className="text-xs text-gray-500">{description}</div>
                             </div>
                           </button>
                         ))}
@@ -676,39 +696,50 @@ const NotionEditor = () => {
                     <div
                         contentEditable
                         suppressContentEditableWarning
-                        className="w-full focus:outline-none bg-transparent"
-                        data-placeholder="Type your callout..."
+                        className="w-full focus:outline-none bg-transparent relative"
+                        style={{
+                          ...(placeholderText && {
+                            position: 'relative'
+                          })
+                        }}
                         onBlur={(e) => updateBlock(block.id, { content: e.currentTarget.innerHTML || '' })}
                         onMouseUp={(e) => handleTextSelection(e, block.id)}
                         dangerouslySetInnerHTML={{ __html: block.content }}
                      />
+                     {placeholderText && (
+                       <div 
+                         className="absolute inset-0 pointer-events-none text-gray-400 dark:text-gray-500"
+                         style={{ left: '3rem' }}
+                       >
+                         {placeholderText}
+                       </div>
+                     )}
                  </div>
             ) : ['table', 'chart-bar', 'chart-pie', 'calendar', 'file', 'video', 'audio', 'bookmark'].includes(block.type) ? (
               renderSpecialBlock(block)
             ) : (
-              <div className="flex-1">
+              <div className="flex-1 relative">
                 <div
                   contentEditable
                   suppressContentEditableWarning
                   className={getBlockClassName(block)}
-                  data-placeholder={!block.content ? (
-                    block.type === 'paragraph' ? "Type '/' for commands" :
-                    block.type === 'heading1' ? 'Heading 1' :
-                    block.type === 'heading2' ? 'Heading 2' :
-                    block.type === 'heading3' ? 'Heading 3' :
-                    block.type === 'quote' ? 'Quote' :
-                    block.type === 'code' ? 'Type your code...' :
-                    block.type === 'list' ? 'List item' :
-                    block.type === 'numbered-list' ? 'Numbered list item' :
-                    block.type === 'todo' ? 'To-do' :
-                    block.type === 'toggle' ? 'Toggle' :
-                    `Type your ${block.type}...`
-                  ) : ''}
                   onBlur={(e) => updateBlock(block.id, { content: e.currentTarget.innerHTML || '' })}
                   onKeyDown={(e) => handleSlashCommand(e, block.id)}
                   onMouseUp={(e) => handleTextSelection(e, block.id)}
                   dangerouslySetInnerHTML={{ __html: block.content }}
                 />
+                {placeholderText && (
+                  <div 
+                    className="absolute inset-0 pointer-events-none text-gray-400 dark:text-gray-500"
+                    style={{
+                      display: block.content ? 'none' : 'block',
+                      top: 0,
+                      left: 0
+                    }}
+                  >
+                    {placeholderText}
+                  </div>
+                )}
 
                 {/* Nested content for toggle blocks */}
                 {block.type === 'toggle' && !block.collapsed && block.children && (
